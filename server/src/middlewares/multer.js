@@ -3,6 +3,7 @@ import multer from "multer";
 
 // Configure Multer to store uploaded files on the local disk.
 const storage= multer.diskStorage({
+    
     destination:(req,file,cb)=>{
         cb(null,"./public")
         // The callback sets the destination folder where the uploaded file will be stored, initially it is null
@@ -16,6 +17,7 @@ const storage= multer.diskStorage({
         // if user uploads same files may be same name no error occurs, cause=>  it will delete from the public after storing it in cloudinary 
     }
 })
+
 
 // passing the storage inside the multer and export this middleware 
 export const upload=multer({storage})

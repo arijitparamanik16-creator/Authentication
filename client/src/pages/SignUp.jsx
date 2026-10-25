@@ -8,14 +8,14 @@ import { useRef } from "react";
 const Signup = () => {
   // reference for image input
   let file = useRef(null);
+  const [userData, setUserData] = useState(false);
 
   // states for handling image in frontend and backend
   const [frontendImage, setfrontendImage] = useState(dp);
   const [backendImage, setbackendImage] = useState(null);
   let navigate = useNavigate();
   // user the context api
-  let { serverURL, userData, setuserData, getUserData } =
-    useContext(dataContext);
+  let { serverURL } = useContext(dataContext);
   // useContextntext always return an obj
 
   const [firstName, setFirstName] = useState("");
@@ -23,6 +23,26 @@ const Signup = () => {
   const [userName, setUserName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
+
+  const handleSubmitOTP = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await axios.post(
+        serverURL + "/api/verifyemail",
+        { email, otp },
+        {
+          withCredentials: true,
+        },
+      );
+
+      if (response?.data?.user) {
+        navigate("/login");
+      }
+    } catch (error) {
+      console.log({ error: error.response?.data.message });
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -39,16 +59,14 @@ const Signup = () => {
         formData.append("profileImage", backendImage);
         // in server the backendImage is passed as profileImage parameter
       }
-      const response = await axios.post(serverURL + "/api/signUp", formData, {
+      const response = await axios.post(serverURL + "/api/signup", formData, {
         withCredentials: true,
         headers: { "Content-Type": "multipart/form-data" },
         //  Tells the server that the request contains both text fields and file(s). Axios automatically detects FormData and sets the correct header, including the required boundary.
       });
-      console.log(response.data);
-      // in case of token authentication
-      await getUserData();
-      // setting the fetched userData
-      navigate("/");
+      if (response?.data?.user) {
+        setUserData(true);
+      }
     } catch (error) {
       console.log({ error: error.response?.data.message });
     }
@@ -74,6 +92,36 @@ const Signup = () => {
 
   return (
     <div className="min-h-screen bg-[#0f1117] flex items-center justify-center px-4">
+      {userData ? (
+      <div className="w-full max-w-md bg-[#16211d] rounded-lg shadow-lg p-8">
+        <h1 className="text-3xl font-bold text-white text-center mb-6">
+          Verify OTP
+        </h1>
+
+        <form
+          onSubmit={handleSubmitOTP}
+          className="space-y-4 flex flex-col justify-center items-center"
+        >
+          <input
+            type="text"
+            name="otp"
+            placeholder="Enter OTP"
+            value={otp}
+            onChange={(e) => setOtp(e.target.value)}
+            maxLength={6}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:ring-2 focus:ring-cyan-500"
+            required
+          />
+
+          <button
+            type="submit"
+            className="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-semibold py-2 rounded-md transition"
+          >
+            Verify OTP
+          </button>
+        </form>
+      </div>
+      ) : (
       <div className="w-full max-w-md bg-[#16211d] rounded-lg shadow-lg p-8">
         <h1 className="text-3xl font-bold text-white text-center mb-6">
           Sign Up
@@ -175,6 +223,7 @@ const Signup = () => {
           </p>
         </form>
       </div>
+      ) }
     </div>
   );
 };

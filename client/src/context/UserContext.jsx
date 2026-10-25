@@ -1,37 +1,72 @@
-import React, { createContext, useEffect, useState } from "react";
+import { createContext, useEffect, useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
 
 // creating a context api
 export const dataContext = createContext();
+
 const UserContext = ({ children }) => {
-  let navigate = useNavigate();
   // creating a state that holds the userData
   const [userData, setuserData] = useState(null);
+  const [accessToken, setAccessToken] = useState(null);
+  const [loading, setLoading] = useState(true);
   const serverURL = "http://localhost:4000";
-  const getUserData = async () => {
+
+  // fetching access token whenever page reloads by refreshToken
+  const refreshAccessToken = async () => {
+    try {
+      const { data } = await axios.get(`${serverURL}/api/refreshtoken`, {
+        withCredentials: true,
+      });
+      if (data.AccessToken) {
+        setAccessToken(data.AccessToken);
+        const isSuccess = await getUserData(data.AccessToken);
+        // false 
+        if (!isSuccess) {
+          setAccessToken(null);
+          setuserData(null);
+        }
+      } 
+      // if no accessToken 
+      else {
+        setAccessToken(null);
+        setuserData(null);
+      }
+    } catch (error) {
+      setAccessToken(null);
+      setuserData(null);
+    }finally{
+     setLoading(false)
+    }
+  };
+  // getuserdata
+  const getUserData = async (accessToken) => {
     try {
       // fetching the userdata by token authentication
       let { data } = await axios.get(serverURL + "/api/getuserData", {
-        withCredentials: true,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
       console.log(data);
-
       setuserData(data);
+      return true;
     } catch (error) {
-      console.log({ message: error });
-      navigate('/login')
+      console.log(error.response?.data || error.message);
+      return false;
     }
   };
+
   const value = {
     serverURL,
     userData,
     setuserData,
     getUserData,
+    setAccessToken,
+    loading
   };
 
   useEffect(() => {
-    getUserData();
+    refreshAccessToken();
   }, []);
 
   return (
@@ -42,55 +77,40 @@ const UserContext = ({ children }) => {
 
 export default UserContext;
 
-
 // // execution flow --------------------->
-// Website opens
-//       │
-//       ▼
-// UserContext starts rendering
-//       │
-//       ▼
-// Render #1
+// UserContext first renders
+//         |
+//         v
 // userData = null
-//       │
-//       ▼
-// Home also renders with userData = null
-//       │
-//       ▼
-// Render #1 finishes
-//       │
-//       ▼
-// useEffect() runs
-//       │
-//       ▼
-// getUserData()
-//       │
-//       ▼
-// Browser sends token cookie
-//       │
-//       ▼
-// Server verifies token
-//       │
-//       ├──────────────────────┐
-//       │                      │
-//   Valid token           Invalid token
-//       │                      │
-//       ▼                      ▼
-// Return user            Throw error
-//       │                      │
-//       ▼                      ▼
-// setuserData(data)      navigate("/login")
-//       │
-//       ▼
-// React schedules a re-render
-//       │
-//       ▼
-// Render #2 of UserContext
-// userData = fetched user
-//       │
-//       ▼
-// Home re-renders
-// userData = fetched user
-//       │
-//       ▼
-// Profile is displayed
+// loading = true
+//         |
+//         v
+// useEffect()
+//         |
+//         v
+// refreshAccessToken()
+//         |
+//         v
+// GET /api/refreshtoken
+//         |
+//         v
+// Access token received
+//         |
+//         v
+// getUserData(accessToken)
+//         |
+//         v
+// GET /api/getuserData
+// Authorization: Bearer <accessToken>
+//         |
+//         v
+// setuserData(data)
+//         |
+//         v
+// finally: setLoading(false)
+//         |
+//         v
+// React re-renders
+//         |
+//         v
+// App reads the updated authentication state
